@@ -65,37 +65,44 @@ sentiment_emoji_counts_per_text = { #was using Counter class, but replaced
     'neutral': defaultdict(int)
 }
 
-for index, row in df.iterrows():
-    sentiment = row['sentiment']
-    text = row['text']
-    emojis = extract_emoji_counts(text)
-    for (emoji,count) in emojis.items():
-        sentiment_emoji_counts[sentiment][emoji] += count
-        sentiment_emoji_counts_per_text[sentiment][emoji] += 1
+# for index, row in df.iterrows():
+#     sentiment = row['sentiment']
+#     text = row['text']
+#     emojis = extract_emoji_counts(text)
+#     for (emoji,count) in emojis.items():
+#         sentiment_emoji_counts[sentiment][emoji] += count
+#         sentiment_emoji_counts_per_text[sentiment][emoji] += 1
 
-
+def all_emojis(text):
+    all_emojis = set()
+    for index, row in text.iterrows():
+        text = row['text']
+        emojis = extract_emoji_counts(text)
+        for (emoji,_) in emojis.items():
+            all_emojis.add(emoji)
+    return all_emojis
 
 #all code below is designed to find the emoji that is evenly split between the different sentiments
-emoji_sentiments = {}
-for (sentiment,dic) in sentiment_emoji_counts_per_text.items():
-    for (emoji,count) in dic.items():
-        if emoji not in emoji_sentiments.keys():
-            emoji_sentiments[emoji] = [0]*3
-            #indexing goes, positive, negative, neutral
-        if sentiment == 'positive':
-            emoji_sentiments[emoji][0] = count
-        elif sentiment == 'negative':
-            emoji_sentiments[emoji][1] = count
-        else:
-            emoji_sentiments[emoji][2] = count
+# emoji_sentiments = {}
+# for (sentiment,dic) in sentiment_emoji_counts_per_text.items():
+#     for (emoji,count) in dic.items():
+#         if emoji not in emoji_sentiments.keys():
+#             emoji_sentiments[emoji] = [0]*3
+#             #indexing goes, positive, negative, neutral
+#         if sentiment == 'positive':
+#             emoji_sentiments[emoji][0] = count
+#         elif sentiment == 'negative':
+#             emoji_sentiments[emoji][1] = count
+#         else:
+#             emoji_sentiments[emoji][2] = count
 
 
-for (emoji, counts) in emoji_sentiments.items():
-    thing = 0
-    for count in counts:
-        thing += count
-    for i in range(3):
-        emoji_sentiments[emoji][i] = emoji_sentiments[emoji][i]/thing
+# for (emoji, counts) in emoji_sentiments.items():
+#     thing = 0
+#     for count in counts:
+#         thing += count
+#     for i in range(3):
+#         emoji_sentiments[emoji][i] = emoji_sentiments[emoji][i]/thing
 
 
 
@@ -111,13 +118,17 @@ def sort_keys_by_proximity_to_equal_dist(input_dict):
 
 def find_lines_with_emoji(emoji,data):
     final_text = []
+    sentiments = set()
     for index, row in data.iterrows():
         sentiment = row['sentiment']
         text = row['text']
         emojis = extract_emoji_counts(text)
         if emoji in emojis.keys():
-            final_text.append(text)
-    return final_text
+            final_text.append((text,sentiment))
+            sentiments.add(sentiment)
+    if len(sentiments) == 3:
+        return final_text
+    return None
             
 # print(find_lines_with_emoji('🤣',df))
 
@@ -127,11 +138,11 @@ def split_list_randomly(lst, split_ratio=0.8):
     split_index = int(len(lst_copy) * split_ratio)
     return lst_copy[:split_index], lst_copy[split_index:]
 
-lines = find_lines_with_emoji('🤣',df)
-print(len(lines))
-train,test = split_list_randomly(lines)
-print(len(train))
-print(len(test))
+# lines = find_lines_with_emoji('🤣',df)
+# print(len(lines))
+# train,test = split_list_randomly(lines)
+# print(len(train))
+# print(test)
 
 
 # print(sort_keys_by_proximity_to_equal_dist(emoji_sentiments))
