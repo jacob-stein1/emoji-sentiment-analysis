@@ -2,6 +2,7 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
+import pandas as pd
 
 def extract_emojis(text):
     emoji_pattern = re.compile(
@@ -51,3 +52,57 @@ def analyze_pmf_difference(pmf_df):
     plt.show()
 
     return kl_divergence, cosine_similarity, euclidean_distance
+
+def analyze_batch_pmf_differences(texts, classifier_with_emoji, classifier_without_emoji, 
+                                text_embedder, emoji_embedder, label_encoder):
+    all_metrics = {
+        'kl_divergences': [],
+        'cosine_similarities': [],
+        'euclidean_distances': [],
+        'individual_pmfs': []
+    }
+    
+    for text in texts:
+        # Get text embeddings
+        text_embedding = text_embedder.transform([text]).toarray()
+        emoji_embedding = emoji_embedder.transform([text])
+        
+        # Combine features for emoji classifier
+        combined_embedding = np.hstack((text_embedding, emoji_embedding))
+        
+        # Get PMFs from both classifiers
+        pmf_with_emoji = classifier_with_emoji.predict_proba(combined_embedding)[0]
+        pmf_without_emoji = classifier_without_emoji.predict_proba(text_embedding)[0]
+        
+        # Create DataFrame for this sample
+        pmf_df = pd.DataFrame({
+            "with_emoji": pmf_with_emoji,
+            "without_emoji": pmf_without_emoji
+        }, index=label_encoder.classes_)
+        
+        # Calculate metrics for this sample
+        kl_div = scipy.stats.entropy(pmf_with_emoji, pmf_without_emoji)
+        cos_sim = np.dot(pmf_with_emoji, pmf_without_emoji) / (
+            np.linalg.norm(pmf_with_emoji) * np.linalg.norm(pmf_without_emoji)
+        )
+        euc_dist = np.linalg.norm(pmf_with_emoji - pmf_without_emoji)
+        
+        # Store metrics
+        all_metrics['kl_divergences'].append(kl_div)
+        all_metrics['cosine_similarities'].append(cos_sim)
+        all_metrics['euclidean_distances'].append(euc_dist)
+        all_metrics['individual_pmfs'].append(pmf_df)
+    
+    aggregate_stats = {
+        'mean_kl_divergence': np.mean(all_metrics['kl_divergences']),
+        'std_kl_divergence': np.std(all_metrics['kl_divergences']),
+        'mean_cosine_similarity': np.mean(all_metrics['cosine_similarities']),
+        'std_cosine_similarity': np.std(all_metrics['cosine_similarities']),
+        'mean_euclidean_distance': np.mean(all_metrics['euclidean_distances']),
+        'std_euclidean_distance': np.std(all_metrics['euclidean_distances'])
+    }
+    
+    return {
+        'aggregate_stats': aggregate_stats,
+        'individual_metrics': all_metrics
+    }
