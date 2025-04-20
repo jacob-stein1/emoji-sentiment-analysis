@@ -150,6 +150,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         
         with torch.no_grad():
             for text_features, emoji_features, labels in val_loader:
+                # Move data to device
                 text_features = text_features.to(device)
                 emoji_features = emoji_features.to(device)
                 labels = labels.to(device)
@@ -182,6 +183,7 @@ def train_text_only_model(model, train_loader, val_loader, criterion, optimizer,
         train_total = 0
         
         for text_features, labels in train_loader:
+            # Move data to device
             text_features = text_features.to(device)
             labels = labels.to(device)
             
@@ -205,6 +207,7 @@ def train_text_only_model(model, train_loader, val_loader, criterion, optimizer,
         
         with torch.no_grad():
             for text_features, labels in val_loader:
+                # Move data to device
                 text_features = text_features.to(device)
                 labels = labels.to(device)
                 
@@ -226,6 +229,10 @@ def train_text_only_model(model, train_loader, val_loader, criterion, optimizer,
     return best_val_acc
 
 def evaluate_embedder_pair(text_embedder, emoji_embedder, X_train, X_test, y_train, y_test, label_encoder):
+    # Set device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
+    
     # Fit embedders
     text_embedder.fit(X_train)
     emoji_embedder.fit(X_train)
@@ -267,16 +274,12 @@ def evaluate_embedder_pair(text_embedder, emoji_embedder, X_train, X_test, y_tra
     test_loader_text = DataLoader(test_dataset_text, batch_size=32, shuffle=False)
     
     # Initialize models
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    # Hybrid model
     hybrid_model = SentimentModel(
         text_input_size=X_train_text.shape[1],
         emoji_input_size=X_train_emoji.shape[1],
         num_classes=len(label_encoder.classes_)
     ).to(device)
     
-    # Text-only model
     text_only_model = SentimentModel(
         text_input_size=X_train_text.shape[1],
         num_classes=len(label_encoder.classes_)
