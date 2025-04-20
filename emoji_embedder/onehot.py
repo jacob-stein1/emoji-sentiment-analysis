@@ -18,15 +18,14 @@ class OneHotEmojiEmbedder(EmojiEmbedder):
     def fit(self, texts):
         """Find top N most common emojis in the dataset."""
         emoji_counter = Counter()
-        for text in texts:
-            emoji_counter.update(extract_emojis(text))
+        for emojis in self._extract_emojis(texts):
+            emoji_counter.update(emojis)
         self.top_emojis = [emoji for emoji, _ in emoji_counter.most_common(self.top_n)]
     
     def transform(self, texts):
         """Convert texts into one-hot emoji feature vectors."""
         emoji_embedding = np.zeros((len(texts), len(self.top_emojis)))
-        for i, text in enumerate(texts):
-            emojis = extract_emojis(text)
+        for i, emojis in enumerate(self._extract_emojis(texts)):
             for emoji in emojis:
                 if emoji in self.top_emojis:
                     emoji_embedding[i, self.top_emojis.index(emoji)] = 1

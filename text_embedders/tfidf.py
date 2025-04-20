@@ -17,10 +17,10 @@ class TFIDFTextEmbedder(TextEmbedder):
     
     def fit(self, texts):
         """Fit the TF-IDF vectorizer."""
-        texts_no_emoji = [remove_emojis(text) for text in texts]
+        texts_no_emoji = self._preprocess_texts(texts)
         self.vectorizer.fit(texts_no_emoji)
     
     def transform(self, texts):
         """Transform texts into TF-IDF vectors."""
-        texts_no_emoji = [remove_emojis(text) for text in texts]
+        texts_no_emoji = self._preprocess_texts(texts)
         return self.vectorizer.transform(texts_no_emoji)
