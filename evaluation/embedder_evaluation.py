@@ -24,7 +24,8 @@ from emoji_embedder.fasttext import FastTextEmojiEmbedder
 from emoji_embedder.bert import BERTEmojiEmbedder
 from emoji_embedder.doc2vec import Doc2VecEmojiEmbedder
 
-def evaluate_embedder_pair(text_embedder, emoji_embedder, X_train, X_test, y_train, y_test, label_encoder):
+def evaluate_embedder_pair(text_embedder, emoji_embedder, X_train, X_test, y_train, y_test, label_encoder,
+                            text_name, emoji_name, differing_samples):
     text_embedder.fit(X_train)
     emoji_embedder.fit(X_train)
     
@@ -34,7 +35,6 @@ def evaluate_embedder_pair(text_embedder, emoji_embedder, X_train, X_test, y_tra
     X_train_emoji = emoji_embedder.transform(X_train)
     X_test_emoji = emoji_embedder.transform(X_test)
     
-    # Convert sparse matrices to dense arrays if needed
     if hasattr(X_train_text, 'toarray'):
         X_train_text = X_train_text.toarray()
         X_test_text = X_test_text.toarray()
@@ -42,44 +42,49 @@ def evaluate_embedder_pair(text_embedder, emoji_embedder, X_train, X_test, y_tra
         X_train_emoji = X_train_emoji.toarray()
         X_test_emoji = X_test_emoji.toarray()
     
-    # Combine features
     X_train_combined = np.hstack((X_train_text, X_train_emoji))
     X_test_combined = np.hstack((X_test_text, X_test_emoji))
     
-    # Train models
     model_text_only = LogisticRegression(max_iter=1000, multi_class="multinomial", solver="lbfgs")
     model_with_emoji = LogisticRegression(max_iter=1000, multi_class="multinomial", solver="lbfgs")
     
     model_text_only.fit(X_train_text, y_train)
     model_with_emoji.fit(X_train_combined, y_train)
     
-    # Evaluate
     y_pred_text = model_text_only.predict(X_test_text)
     y_pred_combined = model_with_emoji.predict(X_test_combined)
     
     acc_text = accuracy_score(y_test, y_pred_text)
     acc_combined = accuracy_score(y_test, y_pred_combined)
     
+    # Record differing predictions
+    for i in range(len(X_test)):
+        if y_pred_text[i] != y_pred_combined[i]:
+            differing_samples.append({
+                'text_embedder': text_name,
+                'emoji_embedder': emoji_name,
+                'text': X_test.iloc[i],
+                'text_only_prediction': label_encoder.inverse_transform([y_pred_text[i]])[0],
+                'hybrid_prediction': label_encoder.inverse_transform([y_pred_combined[i]])[0],
+                'true_class': label_encoder.inverse_transform([y_test[i]])[0]
+            })
+    
     return acc_combined - acc_text
 
 def main():
-    # Load dataset
     print("Loading dataset...")
     df = pd.read_csv("training.csv")
     
-    # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(
         df["text"], df["sentiment"], 
         test_size=0.2, 
         random_state=42
     )
     
-    # Encode labels
     label_encoder = LabelEncoder()
     y_train_encoded = label_encoder.fit_transform(y_train)
     y_test_encoded = label_encoder.transform(y_test)
     
-    # Define embedders
     text_embedders = {
         'TF-IDF': TFIDFTextEmbedder(),
         'Word2Vec': Word2VecTextEmbedder(),
@@ -96,8 +101,9 @@ def main():
         'Doc2Vec': Doc2VecEmojiEmbedder()
     }
     
-    # Evaluate all combinations
     results = []
+    differing_samples = []
+    
     total_combinations = len(text_embedders) * len(emoji_embedders)
     current = 0
     
@@ -108,32 +114,25 @@ def main():
             print(f"\nProgress: {current}/{total_combinations}")
             print(f"Testing {text_name} + {emoji_name}")
             
-            try:
-                diff = evaluate_embedder_pair(
-                    text_embedder, 
-                    emoji_embedder,
-                    X_train, X_test,
-                    y_train_encoded, y_test_encoded,
-                    label_encoder
-                )
-                results.append({
-                    'text_embedder': text_name,
-                    'emoji_embedder': emoji_name,
-                    'accuracy_difference': diff
-                })
-                print(f"Accuracy difference: {diff:.4f}")
-            except Exception as e:
-                print(f"Error with {text_name} + {emoji_name}: {str(e)}")
-                results.append({
-                    'text_embedder': text_name,
-                    'emoji_embedder': emoji_name,
-                    'accuracy_difference': None
-                })
+            diff = evaluate_embedder_pair(
+                text_embedder, 
+                emoji_embedder,
+                X_train, X_test,
+                y_train_encoded, y_test_encoded,
+                label_encoder,
+                text_name,
+                emoji_name,
+                differing_samples
+            )
+            results.append({
+                'text_embedder': text_name,
+                'emoji_embedder': emoji_name,
+                'accuracy_difference': diff
+            })
+            print(f"Accuracy difference: {diff:.4f}")
     
-    # Create results DataFrame
     results_df = pd.DataFrame(results)
     
-    # Pivot table for better visualization
     pivot_table = results_df.pivot(
         index='text_embedder',
         columns='emoji_embedder',
@@ -143,11 +142,15 @@ def main():
     print("\nResults:")
     print(pivot_table)
     
-    # Save results
     results_df.to_csv('embedder_evaluation_results.csv', index=False)
     print("\nResults saved to 'embedder_evaluation_results.csv'")
     
-    # Find best combination
+    # Save differing samples
+    if differing_samples:
+        differing_df = pd.DataFrame(differing_samples)
+        differing_df.to_csv('differing_predictions_all.csv', index=False)
+        print(f"Saved {len(differing_samples)} differing predictions to 'differing_predictions_all.csv'")
+    
     best_result = results_df.loc[results_df['accuracy_difference'].idxmax()]
     print(f"\nBest combination:")
     print(f"Text embedder: {best_result['text_embedder']}")
