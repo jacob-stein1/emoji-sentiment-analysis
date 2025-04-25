@@ -125,8 +125,4 @@ def analyze_batch_pmf_differences(texts, classifier_with_emoji, classifier_witho
     return {
         'aggregate_stats': aggregate_stats,
         'individual_metrics': all_metrics
-<<<<<<< HEAD
     }
-=======
-    }
->>>>>>> fb142b9 (Generalized)
