@@ -27,7 +27,8 @@ from emoji_embedder.doc2vec import Doc2VecEmojiEmbedder
 
 from neural_models import SentimentModel
 
-def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs, device):
+def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs, device, use_emoji=True):
+
     best_val_acc = 0.0
     
     for epoch in range(num_epochs):
@@ -39,14 +40,23 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         
         for batch in train_loader:
             # Get features and labels from batch
-            text_features, emoji_features, labels = batch
-            text_features = text_features.to(device)
-            emoji_features = emoji_features.to(device)
+            if use_emoji:
+                text_features, emoji_features, labels = batch
+                text_features = text_features.to(device)
+                emoji_features = emoji_features.to(device)
+            else:
+                text_features, labels = batch
+                text_features = text_features.to(device)
+            
             labels = labels.to(device)
             
             # Optimize and backprop
             optimizer.zero_grad()
-            outputs = model(text_features, emoji_features)
+            if use_emoji:
+                outputs = model(text_features, emoji_features)
+            else:
+                outputs = model(text_features)
+            
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -59,6 +69,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         
         train_acc = 100 * train_correct / train_total
         
+        # Validation phase
         model.eval()
         val_correct = 0
         val_total = 0
@@ -66,66 +77,21 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         # Same but with validation data
         with torch.no_grad():
             for batch in val_loader:
-                text_features, emoji_features, labels = batch
-                text_features = text_features.to(device)
-                emoji_features = emoji_features.to(device)
+                if use_emoji:
+                    text_features, emoji_features, labels = batch
+                    text_features = text_features.to(device)
+                    emoji_features = emoji_features.to(device)
+                else:
+                    text_features, labels = batch
+                    text_features = text_features.to(device)
+                
                 labels = labels.to(device)
                 
-                outputs = model(text_features, emoji_features)
-                _, predicted = torch.max(outputs.data, 1)
-                val_total += labels.size(0)
-                val_correct += (predicted == labels).sum().item()
-        
-        val_acc = 100 * val_correct / val_total
-        
-        print(f'Epoch [{epoch+1}/{num_epochs}], '
-              f'Train Loss: {train_loss/len(train_loader):.4f}, '
-              f'Train Acc: {train_acc:.2f}%, '
-              f'Val Acc: {val_acc:.2f}%')
-        
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
-    
-    return best_val_acc
-
-def train_text_only_model(model, train_loader, val_loader, criterion, optimizer, num_epochs, device):
-    best_val_acc = 0.0
-    
-    for epoch in range(num_epochs):
-        model.train()
-        train_loss = 0.0
-        train_correct = 0
-        train_total = 0
-        
-        for batch in train_loader:
-            text_features, labels = batch
-            text_features = text_features.to(device)
-            labels = labels.to(device)
-            
-            optimizer.zero_grad()
-            outputs = model(text_features)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            
-            train_loss += loss.item()
-            _, predicted = torch.max(outputs.data, 1)
-            train_total += labels.size(0)
-            train_correct += (predicted == labels).sum().item()
-        
-        train_acc = 100 * train_correct / train_total
-        
-        model.eval()
-        val_correct = 0
-        val_total = 0
-        
-        with torch.no_grad():
-            for batch in val_loader:
-                text_features, labels = batch
-                text_features = text_features.to(device)
-                labels = labels.to(device)
+                if use_emoji:
+                    outputs = model(text_features, emoji_features)
+                else:
+                    outputs = model(text_features)
                 
-                outputs = model(text_features)
                 _, predicted = torch.max(outputs.data, 1)
                 val_total += labels.size(0)
                 val_correct += (predicted == labels).sum().item()
@@ -204,10 +170,10 @@ def evaluate_embedder_pair(text_embedder, emoji_embedder, X_train, X_test, y_tra
     optimizer_text = optim.Adam(text_only_model.parameters(), lr=0.001)
     
     print("\nTraining hybrid model (text + emoji)...")
-    hybrid_acc = train_model(hybrid_model, train_loader, test_loader, criterion, optimizer_hybrid, 10, device)
+    hybrid_acc = train_model(hybrid_model, train_loader, test_loader, criterion, optimizer_hybrid, 10, device, use_emoji=True)
     
     print("\nTraining text-only model...")
-    text_only_acc = train_text_only_model(text_only_model, train_loader_text, test_loader_text, criterion, optimizer_text, 10, device)
+    text_only_acc = train_model(text_only_model, train_loader_text, test_loader_text, criterion, optimizer_text, 10, device, use_emoji=False)
     
     # Evaluate and collect misclassifications
     hybrid_model.eval()
