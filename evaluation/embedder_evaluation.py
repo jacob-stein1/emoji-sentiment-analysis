@@ -40,6 +40,13 @@ def evaluate_embedder_pair(text_embedder,
     X_test_text = text_embedder.transform(X_test)
     X_train_emoji = emoji_embedder.transform(X_train)
     X_test_emoji = emoji_embedder.transform(X_test)
+
+    if hasattr(X_train_text, 'toarray'):
+        X_train_text = X_train_text.toarray()
+        X_test_text = X_test_text.toarray()
+    if hasattr(X_train_emoji, 'toarray'):
+        X_train_emoji = X_train_emoji.toarray()
+        X_test_emoji = X_test_emoji.toarray()
     
     # Create stacked input for hybrid models
     X_train_combined = np.hstack((X_train_text, X_train_emoji))
@@ -78,7 +85,7 @@ def evaluate_embedder_pair(text_embedder,
 
 def main():
 
-    df = pd.read_csv("training.csv")
+    df = pd.read_csv("../training.csv")
     
     X_train, X_test, y_train, y_test = train_test_split(
         df["text"], df["sentiment"], 
