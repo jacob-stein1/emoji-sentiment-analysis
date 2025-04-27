@@ -4,7 +4,6 @@ import torch
 import numpy as np
 
 class BERTEmojiEmbedder(EmojiEmbedder):
-    """BERT based emoji embedder."""
     
     def __init__(self, model_name='bert-base-uncased', max_length=128):
         self.model_name = model_name
@@ -15,22 +14,20 @@ class BERTEmojiEmbedder(EmojiEmbedder):
         self.model.to(self.device)
     
     def fit(self, texts):
-        """No fitting needed as we use pretrained BERT."""
+        # Pretrained BERT
         pass
     
     def transform(self, texts):
-        """Transform texts into BERT emoji vectors."""
-        emoji_sequences = self._extract_emojis(texts)
-        vectors = []
+        seqs = self._extract_emojis(texts)
+        embedding = []
         
-        # Process in batches to avoid memory issues
+        # Batch processing
         batch_size = 32
-        for i in range(0, len(emoji_sequences), batch_size):
-            batch_emojis = emoji_sequences[i:i + batch_size]
-            # Join emojis with spaces to create text
+        for i in range(0, len(seqs), batch_size):
+
+            # Get batch
+            batch_emojis = seqs[i:i + batch_size]
             batch_texts = [' '.join(emojis) for emojis in batch_emojis]
-            
-            # Tokenize
             encoded = self.tokenizer(
                 batch_texts,
                 padding=True,
@@ -39,15 +36,12 @@ class BERTEmojiEmbedder(EmojiEmbedder):
                 return_tensors='pt'
             )
             
-            # Move to device
-            input_ids = encoded['input_ids'].to(self.device)
-            attention_mask = encoded['attention_mask'].to(self.device)
+            ids = encoded['input_ids'].to(self.device)
+            mask = encoded['attention_mask'].to(self.device)
             
-            # Get BERT embeddings
             with torch.no_grad():
-                outputs = self.model(input_ids, attention_mask=attention_mask)
-                # Use [CLS] token embedding as emoji sequence representation
-                batch_vectors = outputs.last_hidden_state[:, 0, :].cpu().numpy()
-                vectors.extend(batch_vectors)
+                outputs = self.model(ids, attention_mask=mask)
+                batch_embeddings = outputs.last_hidden_state[:, 0, :].cpu().numpy()
+                embedding.extend(batch_embeddings)
         
-        return np.array(vectors) 
+        return np.array(embedding) 

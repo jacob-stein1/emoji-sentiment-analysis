@@ -3,7 +3,6 @@ from emoji_embedder.base import EmojiEmbedder
 import numpy as np
 
 class Word2VecEmojiEmbedder(EmojiEmbedder):
-    """Word2Vec based emoji embedder."""
     
     def __init__(self, vector_size=100, window=5, min_count=1):
         self.vector_size = vector_size
@@ -12,32 +11,27 @@ class Word2VecEmojiEmbedder(EmojiEmbedder):
         self.model = None
     
     def fit(self, texts):
-        """Fit the Word2Vec model on emojis."""
         emoji_sequences = self._extract_emojis(texts)
-        self.model = Word2Vec(emoji_sequences,
-                            vector_size=self.vector_size,
-                            window=self.window,
-                            min_count=self.min_count)
+        self.model = Word2Vec(
+            emoji_sequences,
+            vector_size=self.vector_size,
+            window=self.window,
+            min_count=self.min_count)
     
     def transform(self, texts):
-        """Transform texts into Word2Vec emoji vectors."""
-        if self.model is None:
-            raise ValueError("Model not fitted. Call fit() first.")
         
-        emoji_sequences = self._extract_emojis(texts)
-        vectors = []
+        seqs = self._extract_emojis(texts)
+        embeddings = []
         
-        for emojis in emoji_sequences:
+        for emojis in seqs:
             emoji_vectors = []
             for emoji in emojis:
                 if emoji in self.model.wv:
                     emoji_vectors.append(self.model.wv[emoji])
             
             if emoji_vectors:
-                # Average emoji vectors
-                vectors.append(np.mean(emoji_vectors, axis=0))
+                embeddings.append(np.mean(emoji_vectors, axis=0))
             else:
-                # If no emojis found, use zero vector
-                vectors.append(np.zeros(self.vector_size))
+                embeddings.append(np.zeros(self.vector_size))
         
-        return np.array(vectors) 
+        return np.array(embeddings) 
