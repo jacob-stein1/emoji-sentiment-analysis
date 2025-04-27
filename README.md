@@ -36,13 +36,19 @@ This project tests various embedding techniques for sentiment classification on 
 ### Emoji Analysis (`emoji_frequency_analysis/`)
 - `emoji_frequencies.py`: Counts usage and frequency of emojis in CSVs
 
+### Old Proof of Concept (`testing.py`)
+- Runs a basic test with TF-IDF text embedding, adn one hot emoji embedding
+
+### Dataset (`training.csv`)
+- Unified dataset, reproducible by running `compile.py`
+
 ## Reproducibility  
 
-1. Clone the repository
-2. Install dependencies:
+1. Clone the repository and install dependencies
 ```bash
 pip install -r requirements.txt
 ```
+2. Run `embedder_evaluation.py` and `neural_embedder_evaluation.py` to test embedding combinations
 3. You can produce the figures in our report with the following scripts:
 - Table 1: `embedder_evaluation.py`
 - Table 2: `misclassified_table.py`
