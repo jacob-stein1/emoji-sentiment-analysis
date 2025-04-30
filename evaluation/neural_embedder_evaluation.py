@@ -111,7 +111,6 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
 
 def evaluate_embedder_pair(text_embedder, emoji_embedder, X_train, X_test, y_train, y_test, label_encoder, text_name, emoji_name, differing_samples):
 
-    # Device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     

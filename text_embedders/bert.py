@@ -20,7 +20,6 @@ class BERTEmbedder(TextEmbedder):
         texts_no_emoji = self._preprocess_texts(texts)
         embeddings = []
         
-        # Process in batches to avoid memory issues
         batch_size = 32
         for i in range(0, len(texts_no_emoji), batch_size):
             batch_texts = texts_no_emoji[i:i + batch_size]
@@ -36,7 +35,6 @@ class BERTEmbedder(TextEmbedder):
             ids = encoded['input_ids'].to(self.device)
             mask = encoded['attention_mask'].to(self.device)
             
-            # Get BERT embeddings
             with torch.no_grad():
                 outputs = self.model(ids, attention_mask=mask)
                 batch_vectors = outputs.last_hidden_state[:, 0, :].cpu().numpy()

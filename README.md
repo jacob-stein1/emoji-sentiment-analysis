@@ -37,7 +37,8 @@ This project tests various embedding techniques for sentiment classification on 
 - `emoji_frequencies.py`: Counts usage and frequency of emojis in CSVs
 
 ### Old Proof of Concept (`testing.py`)
-- Runs a basic test with TF-IDF text embedding, adn one hot emoji embedding
+- Runs a basic test with TF-IDF text embedding, and one hot emoji embedding
+- Won't work because we got rid of one hot emoji embedding :(
 
 ### Dataset (`training.csv`)
 - Unified dataset, reproducible by running `compile.py`
